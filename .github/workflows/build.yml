@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle with dependency cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble debug and release APKs
+        run: ./gradlew --no-daemon clean assembleDebug assembleRelease
+
+      - name: Rename APKs
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/cropsense-${GITHUB_REF_NAME}-release.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/cropsense-${GITHUB_REF_NAME}-debug.apk"
+          ls -lh dist
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks-${{ github.run_id }}
+          path: dist
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: apks-${{ github.run_id }}
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          notes="$(git tag -l "$TAG" --format='%(contents:body)')"
+          if [ -z "$notes" ]; then
+            notes="Release APK for $TAG. Requires Android 9.0 (API 28) or newer."
+          fi
+          gh release create "$TAG" dist/*.apk --title "CropSense $TAG" --notes "$notes"

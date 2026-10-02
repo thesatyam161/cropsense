@@ -30,7 +30,7 @@ Inference runs on `Dispatchers.IO` from `MainViewModel`. Both models are memory-
 
 ## Supported classes
 
-38 classes over 14 crops, from PlantVillage. The list is defined in `ml/DiseaseClassifier.kt`.
+38 classes over 14 crops, from the [PlantVillage dataset](https://github.com/spMohanty/PlantVillage-Dataset). The list is defined in `ml/DiseaseClassifier.kt`.
 
 | Crop | Conditions |
 |------|-----------|
@@ -62,37 +62,9 @@ Open the folder in Android Studio, let Gradle sync, then run on a device or emul
 
 Both model files ship in `app/src/main/assets/` (`plant_detector.tflite` 8.5 MB, `model.tflite` 9.1 MB), so no download or setup step is needed.
 
-## Dependencies
+## Releases
 
-```kotlin
-implementation("org.tensorflow:tensorflow-lite:2.14.0")
-implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-implementation("androidx.compose.material:material-icons-extended:1.6.1")
-implementation("io.coil-kt:coil-compose:2.5.0")
-implementation(platform(libs.androidx.compose.bom))  // Compose BOM 2024.09.00
-implementation(libs.androidx.material3)
-implementation(libs.androidx.activity.compose)       // 1.12.2 via version catalog
-```
-
-`androidx.activity:activity-compose` is declared twice in `app/build.gradle.kts`, once pinned at 1.8.2 and once through the version catalog at 1.12.2. Gradle resolves to the higher one, so the pinned declaration is dead and can be deleted.
-
-## Code layout
-
-```
-app/src/main/java/com/example/cropsense/
-├── MainActivity.kt              Compose UI: preview, picker buttons, result cards
-├── MainViewModel.kt             Holds result/loading/error state, launches inference
-├── ml/DiseaseClassifier.kt      Loads both interpreters, runs the two-stage pipeline
-├── model/PredictionResponse.kt  Result data class
-└── ui/theme/                    Dark Material 3 colors and typography
-
-app/src/main/assets/
-├── plant_detector.tflite        Stage 1, leaf vs not leaf
-└── model.tflite                 Stage 2, 38-class classifier
-```
-
-There is no backend and no network code in the project.
+Signed release APKs are attached to each [tagged release](https://github.com/thesatyam161/cropsense/releases). `.github/workflows/build.yml` runs `clean assembleRelease assembleDebug` on every push and pull request, and publishes a release when a `v*` tag is pushed.
 
 ## Known rough edges
 
@@ -102,8 +74,3 @@ There is no backend and no network code in the project.
 - The theme is hardcoded dark. There is no light theme and it does not follow the system setting.
 - `applicationId` is still the template default `com.example.cropsense`.
 - The repository has no LICENSE file.
-
-## Credits
-
-- Dataset: [PlantVillage](https://github.com/spMohanty/PlantVillage-Dataset)
-- Runtime: [TensorFlow Lite](https://www.tensorflow.org/lite)
