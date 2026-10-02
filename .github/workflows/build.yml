@@ -44,7 +44,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apks-${{ github.run_id }}
-          path: dist
+          path: dist/*.apk
           if-no-files-found: error
 
   release:
@@ -70,8 +70,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          notes="$(git tag -l "$TAG" --format='%(contents:body)')"
+          mapfile -t apks < <(find dist -name '*.apk' | sort)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "No APKs found after download. Contents of dist/:"
+            ls -lR dist
+            exit 1
+          fi
+          printf 'Attaching %s\n' "${apks[@]}"
+
+          notes="$(git tag -l "$TAG" --format='%(contents:body)' || true)"
           if [ -z "$notes" ]; then
             notes="Release APK for $TAG. Requires Android 9.0 (API 28) or newer."
           fi
-          gh release create "$TAG" dist/*.apk --title "CropSense $TAG" --notes "$notes"
+
+          gh release create "$TAG" --title "CropSense $TAG" --notes "$notes" "${apks[@]}"
